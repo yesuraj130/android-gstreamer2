@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">Gst Low-Latency Launcher</string>
+    <string name="pipeline_1_label">Pipeline 1 (Primary Live Stream)</string>
+    <string name="pipeline_2_label">Pipeline 2 (Secondary Stream)</string>
+    <string name="pipeline_3_label">Pipeline 3 (Custom / ahc2src)</string>
+    <string name="play">Play</string>
+    <string name="stop">Stop</string>
+    <string name="status_idle">Status: Idle</string>
+    <string name="rtsp_server_title">Camera RTSP Server Broadcast</string>
+    <string name="start_rtsp">Start RTSP Server</string>
+    <string name="stop_rtsp">Stop RTSP Server</string>
+    <string name="auto_start_label">Auto-start last played on boot</string>
+</resources>

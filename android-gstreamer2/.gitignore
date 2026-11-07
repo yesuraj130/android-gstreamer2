@@ -1,0 +1,19 @@
+# AI Studio specific files
+metadata.json
+.aistudio/
+.aistudio*
+
+# Non-Android template files
+.env.example
+index.html
+package.json
+tsconfig.json
+vite.config.ts
+
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
