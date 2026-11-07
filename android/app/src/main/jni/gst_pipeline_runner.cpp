@@ -1,4 +1,5 @@
 #include "gst_pipeline_runner.h"
+#include <dlfcn.h>
 
 static gboolean bus_callback(GstBus* bus, GstMessage* message, gpointer user_data) {
     auto* runner = static_cast<GstPipelineRunner*>(user_data);
@@ -30,9 +31,34 @@ void GstPipelineRunner::init(JNIEnv* env, jobject context) {
 
     env->GetJavaVM(&mJavaVM);
 
-    // Call official GStreamer Android SDK initializer which registers all static plugins
-    LOGI("Calling gst_android_init...");
-    gst_android_init(env, context);
+    // Dynamically query and invoke GStreamer Android initialization from libgstreamer_android.so if present
+    void* handle = dlopen("libgstreamer_android.so", RTLD_NOLOAD);
+    if (!handle) {
+        handle = dlopen("libgstreamer_android.so", RTLD_NOW);
+    }
+    if (handle) {
+        typedef void (*GstNativeInitFn)(JNIEnv*, jclass, jobject);
+        typedef void (*GstAndroidInitFn)(JNIEnv*, jobject);
+        auto nativeInit = reinterpret_cast<GstNativeInitFn>(dlsym(handle, "Java_org_freedesktop_gstreamer_GStreamer_nativeInit"));
+        if (nativeInit) {
+            LOGI("Calling Java_org_freedesktop_gstreamer_GStreamer_nativeInit...");
+            nativeInit(env, nullptr, context);
+        } else {
+            auto androidInit = reinterpret_cast<GstAndroidInitFn>(dlsym(handle, "gst_android_init"));
+            if (androidInit) {
+                LOGI("Calling gst_android_init...");
+                androidInit(env, context);
+            }
+        }
+    }
+
+    // Official GStreamer core initialization
+    GError* error = nullptr;
+    if (!gst_init_check(nullptr, nullptr, &error)) {
+        LOGE("Failed to initialize GStreamer: %s", error ? error->message : "unknown error");
+        if (error) g_error_free(error);
+        return;
+    }
 
     mGstInitialized = true;
     LOGI("GStreamer initialized successfully. Version: %s", gst_version_string());
