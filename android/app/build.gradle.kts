@@ -3,7 +3,8 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
-val gstRootEnv = System.getenv("GSTREAMER_ROOT_ANDROID") ?: ""
+val gstRootEnv = (project.findProperty("GSTREAMER_ROOT_ANDROID") as? String)
+    ?: System.getenv("GSTREAMER_ROOT_ANDROID") ?: ""
 
 android {
     namespace = "com.gstlauncher.app"
@@ -25,6 +26,7 @@ android {
                     "GSTREAMER_ROOT_ANDROID=$gstRootEnv",
                     "APP_STL=c++_shared"
                 )
+                targets("gst_pipeline_runner")
             }
         }
 
