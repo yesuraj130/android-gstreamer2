@@ -44,7 +44,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ${{ env.GST_SDK_DIR }}
-          key: gstreamer-android-${{ env.GST_VERSION }}-universal-v3
+          key: gstreamer-android-${{ env.GST_VERSION }}-universal-raw
 
       - name: Download and unpack GStreamer Android SDK
         if: steps.cache-gstreamer.outputs.cache-hit != 'true'
@@ -57,22 +57,40 @@ jobs:
           tar -xf /tmp/gstreamer-android.tar.xz -C ${{ env.GST_SDK_DIR }}
           rm -f /tmp/gstreamer-android.tar.xz
 
-      - name: Fix GStreamer SDK Rust Workspace Stubs
-        run: |
-          # Ensure stub libgstrsworkspace.a exists if referenced by Rust workspace .la files
-          for arch in arm64 armv7 x86 x86_64; do
-            if [ -d "${{ env.GST_SDK_DIR }}/$arch/lib" ] && [ ! -f "${{ env.GST_SDK_DIR }}/$arch/lib/libgstrsworkspace.a" ]; then
-              echo "Creating stub libgstrsworkspace.a for $arch"
-              ar cr "${{ env.GST_SDK_DIR }}/$arch/lib/libgstrsworkspace.a"
-            fi
-          done
-
-      - name: Save GStreamer Cache Immediately
+      - name: Save pristine GStreamer SDK Cache Immediately
         if: steps.cache-gstreamer.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: ${{ env.GST_SDK_DIR }}
-          key: gstreamer-android-${{ env.GST_VERSION }}-universal-v3
+          key: gstreamer-android-${{ env.GST_VERSION }}-universal-raw
+
+      - name: Apply GStreamer SDK patches and stubs
+        run: |
+          echo "Applying linker fixes to tools.mk..."
+          python3 -c "
+          import glob
+          for p in glob.glob('${{ env.GST_SDK_DIR }}/**/tools.mk', recursive=True):
+              with open(p, 'r') as f:
+                  content = f.read()
+              # Only prefix -l if the token does not already start with a hyphen (-):
+              target = '\$(eval __libtool.link.shared_libs += \$1)'
+              replacement = '\$(eval __libtool.link.shared_libs += \$(if \$(filter -%,\$1),\$1,-l\$1))'
+              if target in content:
+                  content = content.replace(target, replacement)
+                  with open(p, 'w') as f:
+                      f.write(content)
+                  print('Patched', p)
+          "
+
+          # Ensure stub libraries exist if referenced by .la files
+          for arch in arm64 armv7 x86 x86_64; do
+            for stub in libgstrsworkspace.a liblcevc_dec_pipeline_cpu.a liblcevc_dec_pipeline_legacy.a; do
+              if [ -d "${{ env.GST_SDK_DIR }}/$arch/lib" ] && [ ! -f "${{ env.GST_SDK_DIR }}/$arch/lib/$stub" ]; then
+                echo "Creating stub $stub for $arch"
+                ar cr "${{ env.GST_SDK_DIR }}/$arch/lib/$stub"
+              fi
+            done
+          done
 
       - name: Build Debug APK
         working-directory: android
