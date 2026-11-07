@@ -44,7 +44,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ${{ env.GST_SDK_DIR }}
-          key: gstreamer-android-${{ env.GST_VERSION }}-universal-v2
+          key: gstreamer-android-${{ env.GST_VERSION }}-universal-v3
 
       - name: Download and unpack GStreamer Android SDK
         if: steps.cache-gstreamer.outputs.cache-hit != 'true'
@@ -57,11 +57,8 @@ jobs:
           tar -xf /tmp/gstreamer-android.tar.xz -C ${{ env.GST_SDK_DIR }}
           rm -f /tmp/gstreamer-android.tar.xz
 
-      - name: Patch GStreamer NDK tools.mk for Clang linker
+      - name: Fix GStreamer SDK Rust Workspace Stubs
         run: |
-          echo "Patching tools.mk in GStreamer SDK to correctly format linker library flags..."
-          find ${{ env.GST_SDK_DIR }} -name "tools.mk" -exec sed -i 's/\$(eval __libtool.link.shared_libs += \$1)/\$(eval __libtool.link.shared_libs += -l\$(patsubst -l%,%,\$1))/' {} +
-          
           # Ensure stub libgstrsworkspace.a exists if referenced by Rust workspace .la files
           for arch in arm64 armv7 x86 x86_64; do
             if [ -d "${{ env.GST_SDK_DIR }}/$arch/lib" ] && [ ! -f "${{ env.GST_SDK_DIR }}/$arch/lib/libgstrsworkspace.a" ]; then
@@ -75,7 +72,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: ${{ env.GST_SDK_DIR }}
-          key: gstreamer-android-${{ env.GST_VERSION }}-universal-v2
+          key: gstreamer-android-${{ env.GST_VERSION }}-universal-v3
 
       - name: Build Debug APK
         working-directory: android
